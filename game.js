@@ -4,11 +4,19 @@ const buttonUp = document.querySelector("#up");
 const buttonLeft = document.querySelector("#left");
 const buttonRight = document.querySelector("#right");
 const buttonDown = document.querySelector("#down");
+const spanLives = document.querySelector("#lives");
+const spanTime = document.querySelector("#time");
+const spanRecord = document.querySelector("#record");
+const pResult = document.querySelector("#result");
 
 let canvasSize;
 let elementSize;
 let level = 0;
 let lives = 3;
+
+let timeStart;
+let timePlayer;
+let timeInterval;
 
 const playerPosition = {
   x: undefined,
@@ -22,38 +30,48 @@ const giftPosition = {
 
 let enemyPosition = [];
 
-window.addEventListener("load", startgame);
+window.addEventListener("load", setCanvasSize);
 window.addEventListener("resize", setCanvasSize);
 
 function setCanvasSize() {
   if (window.innerHeight > window.innerWidth) {
-    canvasSize = window.innerWidth * 0.8;
+    canvasSize = window.innerWidth * 0.7;
   } else {
-    canvasSize = window.innerHeight * 0.8;
+    canvasSize = window.innerHeight * 0.7;
   }
 
   canvas.setAttribute("width", canvasSize);
   canvas.setAttribute("height", canvasSize);
 
   elementSize = canvasSize / 10;
+
+  playerPosition.x = undefined;
+  playerPosition.y = undefined;
+
+  startgame();
 }
 
 function startgame() {
-  setCanvasSize();
-
   game.font = elementSize + "px Verdana";
   game.textAlign = "end";
 
   const map = maps[level];
 
-  if(!map) {
+  if (!map) {
     gameWin();
     return;
+  }
+
+  if (!timeStart) {
+    timeStart = Date.now();
+    timeInterval = setInterval(showTime, 100);
+    showRecord();
   }
 
   const mapRows = map.trim().split("\n");
   const mapRowCols = mapRows.map((row) => row.trim().split(""));
 
+  showLives();
   enemyPosition = [];
   game.clearRect(0, 0, canvasSize, canvasSize);
 
@@ -71,10 +89,10 @@ function startgame() {
       } else if (col == "I") {
         giftPosition.x = posX;
         giftPosition.y = posY;
-      } else if(col == "X") {
+      } else if (col == "X") {
         enemyPosition.push({
           x: posX,
-          y: posY
+          y: posY,
         });
       }
 
@@ -85,20 +103,22 @@ function startgame() {
 }
 
 function movePlayer() {
-  const giftCollisionX = playerPosition.x.toFixed(3) == giftPosition.x.toFixed(3);
-  const giftCollisionY = playerPosition.y.toFixed(3) == giftPosition.y.toFixed(3);
+  const giftCollisionX =
+    playerPosition.x == giftPosition.x;
+  const giftCollisionY =
+    playerPosition.y == giftPosition.y;
   const giftCollision = giftCollisionX && giftCollisionY;
   if (giftCollision) {
     levelWin();
   }
 
-  const enemyCollision = enemyPosition.find(enemy => {
-    const enemyCollisionX = enemy.x.toFixed(3) == playerPosition.x.toFixed(3);
-    const enemyCollisionY = enemy.y.toFixed(3) == playerPosition.y.toFixed(3);
+  const enemyCollision = enemyPosition.find((enemy) => {
+    const enemyCollisionX = enemy.x == playerPosition.x;
+    const enemyCollisionY = enemy.y == playerPosition.y;
     return enemyCollisionX && enemyCollisionY;
   });
 
-  if(enemyCollision) {
+  if (enemyCollision) {
     levelFail();
   }
 
@@ -112,21 +132,48 @@ function levelWin() {
 
 function gameWin() {
   console.log("Terminaste el juego");
+  clearInterval(timeInterval);
+
+  const recordTime = localStorage.getItem('record_time');
+  const playerTime = Date.now() -timeStart;
+
+  if(recordTime) {
+    if(recordTime >= playerTime) {
+      localStorage.setItem('record_time', playerTime);
+      pResult.innerHTML = "SUPERASTE EL RECORD";
+    } else {
+      pResult.innerHTML = "lo siento no superaste el record :(";
+    }
+  } else {
+    localStorage.setItem('record_time', playerTime);
+    pResult.innerHTML = "Primera vez? Muy bien, pero ahora trata de superar tu tiempo :)"
+  }
 }
 
-function levelFail(){
+function levelFail() {
   lives--;
-  if(lives <= 0) {
+  if (lives <= 0) {
     level = 0;
     lives = 3;
+    timeStart = undefined;
   }
   playerPosition.x = undefined;
   playerPosition.y = undefined;
   startgame();
 }
 
-function gameOver() {
+function gameOver() {}
 
+function showLives() {
+  spanLives.innerHTML = emojis["HEART"].repeat(lives);
+}
+
+function showTime() {
+  spanTime.innerHTML = Date.now() - timeStart;
+}
+
+function showRecord() {
+  spanRecord.innerHTML = localStorage.getItem("record_time");
 }
 
 window.addEventListener("keydown", moveByKeys);
